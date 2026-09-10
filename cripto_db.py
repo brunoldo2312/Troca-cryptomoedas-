@@ -77,9 +77,10 @@ class CriptoDB:
         blockchain = []
         with sqlite3.connect(self.db_name) as conn:
             cursor = conn.cursor()
-            cursor.execute("SELECT * FROM blocks ORDER BY block_index ASC")
+            cursor.execute("SELECT block_index, prev_hash, merkle_root, timestamp, nonce, block_hash FROM blocks ORDER BY block_index ASC")
             blocks = cursor.fetchall()
             for b in blocks:
+                # b[0] extrai o número do índice de dentro da tupla retornada pelo SQLite
                 cursor.execute("SELECT tx_id, sender, receiver, amount, timestamp FROM transactions WHERE block_index = ?", (b[0],))
                 txs = cursor.fetchall()
                 tx_list = [{"tx_id": t[0], "sender": t[1], "receiver": t[2], "amount": t[3], "timestamp": t[4]} for t in txs]

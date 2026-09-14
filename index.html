@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="utf-8">
+<title>BRN RWA — Carteira Digital Core</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  :root { color-scheme: dark; }
+  body { font-family: -apple-system,"Segoe UI",Roboto,sans-serif; background:#0d1117; color:#e6edf3; margin:0; padding:20px; }
+  h1 { font-size:20px; margin:0 0 16px; }
+  h2 { font-size:14px; margin:20px 0 8px; color:#8b949e; text-transform:uppercase; letter-spacing:.5px; }
+  .box { background:#161b22; border:1px solid #30363d; border-radius:8px; padding:16px; margin-bottom:16px; }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .form-group { display:flex; flex-direction:column; gap:4px; margin-bottom:10px; }
+  .form-group.full { grid-column: span 2; }
+  label { font-size:12px; color:#8b949e; font-weight:500; }
+  input, select { padding:8px 12px; background:#0d1117; color:#e6edf3; border:1px solid #30363d; border-radius:6px; font-family:monospace; font-size:13px; }
+  .actions { display:flex; gap:8px; margin-top:8px; flex-wrap: wrap; }
+  button { padding:10px 16px; border:0; border-radius:6px; cursor:pointer; font-weight:600; font-size:13px; }
+  .btn-primary { background:#238636; color:#fff; }
+  .btn-primary:hover { background:#2ea043; }
+  .btn-secondary { background:#21262d; color:#c9d1d9; border:1px solid #30363d; }
+  .btn-secondary:hover { background:#30363d; }
+  .btn-blue { background:#2188ff; color:#fff; }
+  .btn-blue:hover { background:#4799ff; }
+  .btn-orange { background:#d29922; color:#fff; }
+  .btn-orange:hover { background:#e2a932; }
+  .counter-badge { display:inline-block; background:#1f6feb33; color:#58a6ff; padding:2px 8px; border-radius:10px; font-size:12px; font-weight:600; margin-left:6px; }
+  pre { background:#0d1117; padding:12px; border-radius:6px; font-family:monospace; font-size:12px; border:1px solid #21262d; margin:4px 0 0; overflow-x:auto; white-space: pre-wrap; word-break: break-all; }
+  #console-log { color:#58a6ff; }
+</style>
+</head>
+<body>
+
+  <h1>🏦 BRN RWA — Carteira de Ativos do Mundo Real</h1>
+
+  <!-- SEÇÃO 1: CHAVES -->
+  <h2>🔑 Chaves Ativas (Endereçamento ECDSA)</h2>
+  <div class="box">
+    <div class="grid">
+      <div class="form-group full">
+        <label>Seu Endereço Público</label>
+        <input id="w-addr" readonly placeholder="brn1...">
+      </div>
+      <div class="form-group">
+        <label>Sua Chave Privada (SK)</label>
+        <input id="w-sk" type="password" placeholder="Chave Privada não carregada">
+      </div>
+      <div class="form-group">
+        <label>Sua Chave Pública (PK)</label>
+        <input id="w-pk" type="password" placeholder="Chave Pública não carregada">
+      </div>
+    </div>
+    <div class="actions">
+      <button class="btn-primary" onclick="uiGenerateWallet()">Criar Nova Carteira (ECDSA)</button>
+      <button class="btn-secondary" onclick="toggleKeys()">👁️ Mostrar/Ocultar Chaves</button>
+    </div>
+  </div>
+
+  <!-- SEÇÃO 2: SALDOS -->
+  <h2>📊 Saldos e Portfólio RWA <span id="asset-count" class="counter-badge">Ativos: 0</span></h2>
+  <div class="box">
+    <div class="actions" style="margin-bottom: 12px; margin-top: 0;">
+      <button class="btn-blue" onclick="uiSyncPortfolio()">🔄 Sincronizar Saldos com o Nó</button>
+      <button class="btn-orange" onclick="uiMineBlock()">⛏️ Forjar / Minerar Bloco</button>
+      <button class="btn-secondary" onclick="uiCallFaucet()">🚰 Chamar Faucet (BRN)</button>
+    </div>
+    <label>Tokens e Compliance Ativos</label>
+    <pre id="portfolio-display">Nenhuma chave ativa monitorada. Preencha os campos ou crie uma nova carteira para sincronizar.</pre>
+  </div>
+
+  <!-- SEÇÃO 3: BACKUP -->
+  <h2>💾 Armazenamento Criptografado (.wallet)</h2>
+  <div class="box grid">
+    <div class="form-group">
+      <label>Nome do Arquivo</label>
+      <input id="f-name" value="carteira_rwa">
+    </div>
+    <div class="form-group">
+      <label>Senha Master (Argon2id)</label>
+      <input id="f-pass" type="password" placeholder="Mínimo 12 caracteres">
+    </div>
+    <div class="actions full" style="margin-top: 0;">
+      <button class="btn-secondary" onclick="uiSaveWallet()">Exportar Backup Seguro</button>
+      <button class="btn-secondary" onclick="uiLoadWallet()">Importar da Pasta wallets/</button>
+    </div>
+  </div>
+
+  <!-- SEÇÃO 4: TRANSFERÊNCIAS -->
+  <h2>💸 Liquidação de Ativos / Transferência</h2>
+  <div class="box grid">
+    <div class="form-group">
+      <label>ID do Ativo (Ex: BRN, AAPL, GOLD)</label>
+      <input id="t-asset" value="BRN">
+    </div>
+    <div class="form-group">
+      <label>Quantidade</label>
+      <input id="t-amount" type="number" step="any" placeholder="0.0">
+    </div>
+    <div class="form-group full">
+      <label>Destinatário (Endereço brn1...)</label>
+      <input id="t-to" placeholder="brn1...">
+    </div>
+    <div class="actions full" style="margin-top: 0;">
+      <button class="btn-primary" style="width: 100%;" onclick="uiExecuteTransfer()">Assinar e Transmitir para o Livro-Razão</button>
+    </div>
+  </div>
+
+  <!-- CONSOLE -->
+  <h2>Console Operacional do Nó</h2>
+  <div class="box" style="padding: 10px;">
+    <pre id="console-log">Pronto para inicialização.</pre>
+  </div>
+
+  <!-- Importa o arquivo externo de funções JavaScript, contornando o bloqueio do QT5 -->
+  <script src="wallet_core.js"></script>
+</body>
+</html>
+

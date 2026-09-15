@@ -1,119 +1,493 @@
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
-<meta charset="utf-8">
-<title>BRN RWA — Carteira Digital Core</title>
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<style>
-  :root { color-scheme: dark; }
-  body { font-family: -apple-system,"Segoe UI",Roboto,sans-serif; background:#0d1117; color:#e6edf3; margin:0; padding:20px; }
-  h1 { font-size:20px; margin:0 0 16px; }
-  h2 { font-size:14px; margin:20px 0 8px; color:#8b949e; text-transform:uppercase; letter-spacing:.5px; }
-  .box { background:#161b22; border:1px solid #30363d; border-radius:8px; padding:16px; margin-bottom:16px; }
-  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-  .form-group { display:flex; flex-direction:column; gap:4px; margin-bottom:10px; }
-  .form-group.full { grid-column: span 2; }
-  label { font-size:12px; color:#8b949e; font-weight:500; }
-  input, select { padding:8px 12px; background:#0d1117; color:#e6edf3; border:1px solid #30363d; border-radius:6px; font-family:monospace; font-size:13px; }
-  .actions { display:flex; gap:8px; margin-top:8px; flex-wrap: wrap; }
-  button { padding:10px 16px; border:0; border-radius:6px; cursor:pointer; font-weight:600; font-size:13px; }
-  .btn-primary { background:#238636; color:#fff; }
-  .btn-primary:hover { background:#2ea043; }
-  .btn-secondary { background:#21262d; color:#c9d1d9; border:1px solid #30363d; }
-  .btn-secondary:hover { background:#30363d; }
-  .btn-blue { background:#2188ff; color:#fff; }
-  .btn-blue:hover { background:#4799ff; }
-  .btn-orange { background:#d29922; color:#fff; }
-  .btn-orange:hover { background:#e2a932; }
-  .counter-badge { display:inline-block; background:#1f6feb33; color:#58a6ff; padding:2px 8px; border-radius:10px; font-size:12px; font-weight:600; margin-left:6px; }
-  pre { background:#0d1117; padding:12px; border-radius:6px; font-family:monospace; font-size:12px; border:1px solid #21262d; margin:4px 0 0; overflow-x:auto; white-space: pre-wrap; word-break: break-all; }
-  #console-log { color:#58a6ff; }
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BRN RWA — Carteira Digital</title>
+    <style>
+        :root { color-scheme: dark; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI",
+                         Roboto, sans-serif;
+            background: #0d1117; color: #e6edf3;
+            margin: 0; padding: 20px;
+        }
+        .container { max-width: 900px; margin: 0 auto; }
+        h1 {
+            color: #58a6ff; font-size: 22px;
+            border-bottom: 1px solid #30363d;
+            padding-bottom: 10px; margin-bottom: 20px;
+        }
+        .section {
+            background: #161b22; border: 1px solid #30363d;
+            border-radius: 8px; padding: 18px;
+            margin-bottom: 18px;
+        }
+        .section h3 {
+            margin: 0 0 14px; font-size: 15px;
+            color: #58a6ff;
+        }
+        .row { display: flex; gap: 12px; margin-bottom: 12px; flex-wrap: wrap; }
+        .col { flex: 1; min-width: 220px; }
+        label {
+            display: block; font-size: 11px; color: #8b949e;
+            text-transform: uppercase; margin-bottom: 4px;
+            font-weight: 600; letter-spacing: 0.3px;
+        }
+        input, select {
+            width: 100%; padding: 10px;
+            background: #0d1117; color: #e6edf3;
+            border: 1px solid #30363d; border-radius: 6px;
+            box-sizing: border-box;
+            font-family: 'Consolas', monospace; font-size: 13px;
+        }
+        input:focus { outline: none; border-color: #58a6ff; }
+        button {
+            padding: 10px 18px; background: #238636; color: white;
+            border: 0; border-radius: 6px; cursor: pointer;
+            font-weight: 600; font-size: 13px;
+            margin-right: 6px; margin-bottom: 6px;
+        }
+        button:hover { background: #2ea043; }
+        button:active { transform: translateY(1px); }
+        .btn-secondary { background: #21262d; border: 1px solid #30363d; }
+        .btn-secondary:hover { background: #30363d; }
+        .btn-warn { background: #b8860b; color: black; }
+        .balance-box {
+            background: #1f6feb1a; border: 1px solid #1f6feb66;
+            border-radius: 6px; padding: 14px;
+            font-size: 15px; font-weight: 600;
+            color: #58a6ff; line-height: 1.7;
+            font-family: 'Consolas', monospace;
+        }
+        .log-box {
+            font-family: 'Consolas', monospace; font-size: 12px;
+            background: #010409; padding: 12px;
+            border-radius: 6px; border: 1px solid #30363d;
+            max-height: 220px; overflow-y: auto;
+            color: #7ee787;
+        }
+        .log-box div { padding: 1px 0; }
+        .status {
+            display: inline-block; padding: 3px 10px;
+            border-radius: 10px; font-size: 11px;
+            font-weight: 700; vertical-align: middle;
+            margin-left: 8px;
+        }
+        .status.ok { background: #23863633; color: #3fb950; }
+        .status.err { background: #f8514933; color: #f85149; }
+        .status.warn { background: #d2992233; color: #d29922; }
+        .hint {
+            font-size: 11px; color: #8b949e;
+            margin-top: 6px;
+        }
+    </style>
 </head>
 <body>
+    <div class="container">
+        <h1>🏦 BRN RWA — Carteira de Ativos</h1>
 
-  <h1>🏦 BRN RWA — Carteira de Ativos do Mundo Real</h1>
+        <!-- Chaves -->
+        <div class="section">
+            <h3>🔑 Chaves Ativas (ECDSA secp256k1)</h3>
+            <div class="row">
+                <div class="col">
+                    <button onclick="generateWallet()">
+                        🎲 Criar Nova Carteira
+                    </button>
+                    <span id="api-status" class="status err">
+                        API: aguardando…
+                    </span>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col">
+                    <label>Endereço Público</label>
+                    <input id="wallet-address" readonly
+                           placeholder="Gere uma carteira...">
+                </div>
+            </div>
+            <div class="row">
+                <div class="col">
+                    <label>Chave Privada (SK)</label>
+                    <input id="wallet-sk" type="password" readonly>
+                </div>
+                <div class="col">
+                    <label>Chave Pública (PK)</label>
+                    <input id="wallet-pk" readonly>
+                </div>
+            </div>
+            <div class="hint">
+                ⚠️ Nunca compartilhe a chave privada.
+            </div>
+        </div>
 
-  <!-- SEÇÃO 1: CHAVES -->
-  <h2>🔑 Chaves Ativas (Endereçamento ECDSA)</h2>
-  <div class="box">
-    <div class="grid">
-      <div class="form-group full">
-        <label>Seu Endereço Público</label>
-        <input id="w-addr" readonly placeholder="brn1...">
-      </div>
-      <div class="form-group">
-        <label>Sua Chave Privada (SK)</label>
-        <input id="w-sk" type="password" placeholder="Chave Privada não carregada">
-      </div>
-      <div class="form-group">
-        <label>Sua Chave Pública (PK)</label>
-        <input id="w-pk" type="password" placeholder="Chave Pública não carregada">
-      </div>
-    </div>
-    <div class="actions">
-      <button class="btn-primary" onclick="uiGenerateWallet()">Criar Nova Carteira (ECDSA)</button>
-      <button class="btn-secondary" onclick="toggleKeys()">👁️ Mostrar/Ocultar Chaves</button>
-    </div>
-  </div>
+        <!-- Saldos -->
+        <div class="section">
+            <h3>📊 Saldo &amp; Portfólio</h3>
+            <div class="row">
+                <div class="col">
+                    <button class="btn-secondary"
+                            onclick="checkBalances()">
+                        🔄 Sincronizar Saldo
+                    </button>
+                    <button class="btn-secondary"
+                            onclick="requestFaucet()">
+                        🚰 Faucet (100 BRN)
+                    </button>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col">
+                    <div id="balance-display" class="balance-box">
+                        Nenhuma chave ativa monitorada.
+                    </div>
+                </div>
+            </div>
+        </div>
 
-  <!-- SEÇÃO 2: SALDOS -->
-  <h2>📊 Saldos e Portfólio RWA <span id="asset-count" class="counter-badge">Ativos: 0</span></h2>
-  <div class="box">
-    <div class="actions" style="margin-bottom: 12px; margin-top: 0;">
-      <button class="btn-blue" onclick="uiSyncPortfolio()">🔄 Sincronizar Saldos com o Nó</button>
-      <button class="btn-orange" onclick="uiMineBlock()">⛏️ Forjar / Minerar Bloco</button>
-      <button class="btn-secondary" onclick="uiCallFaucet()">🚰 Chamar Faucet (BRN)</button>
-    </div>
-    <label>Tokens e Compliance Ativos</label>
-    <pre id="portfolio-display">Nenhuma chave ativa monitorada. Preencha os campos ou crie uma nova carteira para sincronizar.</pre>
-  </div>
+        <!-- Backup -->
+        <div class="section">
+            <h3>💾 Backup Criptografado (.wallet)</h3>
+            <div class="row">
+                <div class="col">
+                    <label>Nome do Arquivo</label>
+                    <input id="file-name" value="carteira_rwa">
+                </div>
+                <div class="col">
+                    <label>Senha (mín. 12 caracteres)</label>
+                    <input id="file-pass" type="password"
+                           placeholder="••••••••••••">
+                </div>
+            </div>
+            <div class="row">
+                <button onclick="exportWallet()">
+                    💾 Salvar Backup
+                </button>
+                <button class="btn-secondary"
+                        onclick="importWallet()">
+                    📂 Carregar Backup
+                </button>
+            </div>
+            <div class="hint">
+                Guarda em <code>wallets/</code> com AES-256-GCM + Argon2id.
+            </div>
+        </div>
 
-  <!-- SEÇÃO 3: BACKUP -->
-  <h2>💾 Armazenamento Criptografado (.wallet)</h2>
-  <div class="box grid">
-    <div class="form-group">
-      <label>Nome do Arquivo</label>
-      <input id="f-name" value="carteira_rwa">
-    </div>
-    <div class="form-group">
-      <label>Senha Master (Argon2id)</label>
-      <input id="f-pass" type="password" placeholder="Mínimo 12 caracteres">
-    </div>
-    <div class="actions full" style="margin-top: 0;">
-      <button class="btn-secondary" onclick="uiSaveWallet()">Exportar Backup Seguro</button>
-      <button class="btn-secondary" onclick="uiLoadWallet()">Importar da Pasta wallets/</button>
-    </div>
-  </div>
+        <!-- Envio -->
+        <div class="section">
+            <h3>💸 Enviar BRN</h3>
+            <div class="row">
+                <div class="col">
+                    <label>Ativo</label>
+                    <input id="tx-asset" value="BRN" readonly>
+                </div>
+                <div class="col">
+                    <label>Quantidade</label>
+                    <input id="tx-amount" type="number"
+                           step="0.000001" placeholder="0.0">
+                </div>
+            </div>
+            <div class="row">
+                <div class="col">
+                    <label>Destinatário (brn1...)</label>
+                    <input id="tx-to" placeholder="brn1...">
+                </div>
+            </div>
+            <button class="btn-warn" onclick="sendTransaction()">
+                ✉️ Assinar e Enviar
+            </button>
+        </div>
 
-  <!-- SEÇÃO 4: TRANSFERÊNCIAS -->
-  <h2>💸 Liquidação de Ativos / Transferência</h2>
-  <div class="box grid">
-    <div class="form-group">
-      <label>ID do Ativo (Ex: BRN, AAPL, GOLD)</label>
-      <input id="t-asset" value="BRN">
-    </div>
-    <div class="form-group">
-      <label>Quantidade</label>
-      <input id="t-amount" type="number" step="any" placeholder="0.0">
-    </div>
-    <div class="form-group full">
-      <label>Destinatário (Endereço brn1...)</label>
-      <input id="t-to" placeholder="brn1...">
-    </div>
-    <div class="actions full" style="margin-top: 0;">
-      <button class="btn-primary" style="width: 100%;" onclick="uiExecuteTransfer()">Assinar e Transmitir para o Livro-Razão</button>
-    </div>
-  </div>
+        <!-- Mineração -->
+        <div class="section">
+            <h3>⛏️ Mineração</h3>
+            <div class="row">
+                <div class="col">
+                    <button onclick="toggleMining()" id="btn-mining">
+                        ▶ Iniciar Mineração
+                    </button>
+                    <span id="mining-status" class="status err">
+                        Parada
+                    </span>
+                </div>
+            </div>
+            <div class="hint">
+                Recompensa: <b>1.0 BRN</b> por bloco (fixo).
+            </div>
+        </div>
 
-  <!-- CONSOLE -->
-  <h2>Console Operacional do Nó</h2>
-  <div class="box" style="padding: 10px;">
-    <pre id="console-log">Pronto para inicialização.</pre>
-  </div>
+        <!-- Log -->
+        <div class="section">
+            <label>Console Operacional</label>
+            <div id="console-log" class="log-box">
+                Inicializando…
+            </div>
+        </div>
+    </div>
 
-  <!-- Importa o arquivo externo de funções JavaScript, contornando o bloqueio do QT5 -->
-  <script src="wallet_core.js"></script>
+    <script>
+        // ========================================
+        // Estado
+        // ========================================
+        let API_READY = false;
+        let wallet = { address: "", sk: "", pk: "" };
+        let mining = false;
+
+        // ========================================
+        // Utilidades
+        // ========================================
+        function log(msg) {
+            const box = document.getElementById('console-log');
+            const ts = new Date().toLocaleTimeString();
+            box.innerHTML += `<div>[${ts}] ${msg}</div>`;
+            box.scrollTop = box.scrollHeight;
+        }
+
+        function setApiStatus(ok) {
+            const el = document.getElementById('api-status');
+            el.className = 'status ' + (ok ? 'ok' : 'err');
+            el.textContent = 'API: ' + (ok ? 'pronta' : 'aguardando…');
+            API_READY = ok;
+        }
+
+        // ========================================
+        // Aguarda pywebview
+        // ========================================
+        window.addEventListener('pywebviewready', () => {
+            log('✅ pywebview pronto!');
+            setApiStatus(true);
+            log('Clique em "🎲 Criar Nova Carteira" para começar.');
+        });
+
+        // fallback
+        setTimeout(() => {
+            if (window.pywebview && window.pywebview.api) {
+                setApiStatus(true);
+                log('✅ pywebview detectado (fallback).');
+            } else {
+                log('⚠️ pywebview ainda não respondeu. Aguarde…');
+            }
+        }, 1500);
+
+        // ========================================
+        // API wrapper
+        // ========================================
+        function api() {
+            if (!window.pywebview || !window.pywebview.api) {
+                throw new Error("pywebview ainda não está pronto.");
+            }
+            return window.pywebview.api;
+        }
+
+        // ========================================
+        // Carteira
+        // ========================================
+        async function generateWallet() {
+            log('Gerando chaves secp256k1…');
+            try {
+                const kp = await api().generate_wallet();
+
+                wallet.address = kp.address;
+                wallet.sk = kp.spend_secret_key;
+                wallet.pk = kp.public_key;
+
+                document.getElementById('wallet-address').value =
+                    kp.address;
+                document.getElementById('wallet-sk').value =
+                    kp.spend_secret_key;
+                document.getElementById('wallet-pk').value =
+                    kp.public_key;
+
+                log('✅ Carteira criada: ' +
+                    kp.address.slice(0, 16) + '…');
+
+                await checkBalances();
+            } catch (e) {
+                log('❌ Erro ao gerar carteira: ' + e.message);
+            }
+        }
+
+        async function checkBalances() {
+            if (!wallet.address) {
+                log('⚠️ Gere uma carteira primeiro.');
+                return;
+            }
+
+            log('Consultando saldo…');
+            try {
+                const p = await api().portfolio(wallet.address);
+                const box = document.getElementById('balance-display');
+
+                if (p.erro) {
+                    box.textContent = 'Erro: ' + p.erro;
+                    log('❌ ' + p.erro);
+                    return;
+                }
+
+                let html = '';
+                for (const asset in p) {
+                    const info = p[asset];
+                    html += `<div>🔹 <b>${asset}</b>: ` +
+                            `${info.amount.toFixed(8)} ` +
+                            `<span style="font-size:11px;color:#8b949e">` +
+                            `(disponível: ${info.available.toFixed(8)})` +
+                            `</span></div>`;
+                }
+
+                box.innerHTML = html || 'Saldo: 0.0 BRN';
+                log('✅ Saldo atualizado.');
+            } catch (e) {
+                log('❌ Erro no saldo: ' + e.message);
+            }
+        }
+
+        async function requestFaucet() {
+            if (!wallet.address) {
+                log('⚠️ Gere uma carteira primeiro.');
+                return;
+            }
+
+            log('Chamando faucet…');
+            try {
+                const r = await api().faucet(wallet.address);
+                log((r.ok ? '✅ ' : '❌ ') + r.msg);
+                await checkBalances();
+            } catch (e) {
+                log('❌ Erro no faucet: ' + e.message);
+            }
+        }
+
+        // ========================================
+        // Backup
+        // ========================================
+        async function exportWallet() {
+            const file = document.getElementById('file-name')
+                                 .value.trim();
+            const pass = document.getElementById('file-pass').value;
+
+            if (!wallet.address) {
+                log('⚠️ Gere uma carteira primeiro.');
+                return;
+            }
+            if (pass.length < 12) {
+                log('❌ Senha precisa de 12+ caracteres.');
+                return;
+            }
+
+            log('Salvando carteira…');
+            try {
+                const r = await api().save_wallet(
+                    file, pass, wallet.address, wallet.sk, wallet.pk
+                );
+                log((r.status === 'sucesso' ? '✅ ' : '❌ ') +
+                    (r.message || ''));
+            } catch (e) {
+                log('❌ Erro ao salvar: ' + e.message);
+            }
+        }
+
+        async function importWallet() {
+            const file = document.getElementById('file-name')
+                                 .value.trim();
+            const pass = document.getElementById('file-pass').value;
+
+            if (!pass) {
+                log('❌ Informe a senha.');
+                return;
+            }
+
+            log('Carregando carteira…');
+            try {
+                const r = await api().load_wallet(file, pass);
+
+                if (r.status === 'sucesso') {
+                    wallet.address = r.address;
+                    wallet.sk = r.spend_secret_key;
+                    wallet.pk = r.public_key || '';
+
+                    document.getElementById('wallet-address').value =
+                        r.address;
+                    document.getElementById('wallet-sk').value =
+                        r.spend_secret_key;
+                    document.getElementById('wallet-pk').value =
+                        r.public_key || '';
+
+                    log('✅ Carteira restaurada!');
+                    await checkBalances();
+                } else {
+                    log('❌ ' + r.message);
+                }
+            } catch (e) {
+                log('❌ Erro ao carregar: ' + e.message);
+            }
+        }
+
+        // ========================================
+        // Envio
+        // ========================================
+        async function sendTransaction() {
+            const to = document.getElementById('tx-to')
+                               .value.trim();
+            const amount = parseFloat(
+                document.getElementById('tx-amount').value
+            );
+
+            if (!wallet.address) {
+                log('⚠️ Gere uma carteira primeiro.');
+                return;
+            }
+            if (!to || !amount || amount <= 0) {
+                log('⚠️ Preencha destinatário e valor.');
+                return;
+            }
+
+            log(`Enviando ${amount} BRN para ${to.slice(0, 16)}…`);
+
+            try {
+                const r = await api().send_funds(
+                    wallet.address, to, amount,
+                    wallet.sk, wallet.pk
+                );
+                log((r.status === 'sucesso' ? '✅ ' : '❌ ') +
+                    r.message);
+                await checkBalances();
+            } catch (e) {
+                log('❌ Erro no envio: ' + e.message);
+            }
+        }
+
+        // ========================================
+        // Mineração
+        // ========================================
+        async function toggleMining() {
+            if (!wallet.address) {
+                log('⚠️ Gere uma carteira primeiro.');
+                return;
+            }
+
+            try {
+                const r = await api().toggle_continuous_mining(
+                    wallet.address
+                );
+
+                mining = r.is_mining;
+
+                const btn = document.getElementById('btn-mining');
+                const st = document.getElementById('mining-status');
+
+                btn.textContent = mining
+                    ? '🛑 Parar Mineração'
+                    : '▶ Iniciar Mineração';
+                st.className = 'status ' + (mining ? 'ok' : 'err');
+                st.textContent = mining ? 'Minerando…' : 'Parada';
+
+                log((r.status === 'sucesso' ? '✅ ' : '❌ ') +
+                    r.message);
+            } catch (e) {
+                log('❌ Erro na mineração: ' + e.message);
+            }
+        }
+    </script>
 </body>
 </html>
-

@@ -1,178 +1,132 @@
-# cripto_wallet.py
-# Criptografia profissional: ECDSA (SECP256k1) + AES-256-GCM + Argon2id
-import hashlib
-import json
-import secrets
-import base64
+"""
+Carteira ECDSA secp256k1 + backup criptografado (AES-256-GCM + Argon2id).
+"""
 import os
-from pathlib import Path
+import json
+import base64
+import hashlib
+import secrets
 
-from ecdsa import SigningKey, VerifyingKey, SECP256k1, BadSignatureError
+from cryptography.hazmat.primitives.asymmetric import ec
+from cryptography.hazmat.primitives import hashes, serialization
+from cryptography.hazmat.primitives.kdf.hkdf import HKDF
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
-from argon2.low_level import hash_secret_raw, Type
+
+try:
+    from argon2.low_level import hash_secret_raw, Type
+    _HAS_ARGON2 = True
+except ImportError:
+    _HAS_ARGON2 = False
 
 
 class WalletManager:
-    # Parâmetros Argon2id (OWASP 2025)
-    ARGON2_TIME_COST = 3
-    ARGON2_MEMORY_COST = 65536   # 64 MiB
-    ARGON2_PARALLELISM = 4
-    ARGON2_HASH_LEN = 32
-    ARGON2_SALT_LEN = 16
-    GCM_NONCE_LEN = 12
 
-    # ---------------- Chaves / Endereços ----------------
+    # ── Geração de par de chaves ─────────────────────────
     @staticmethod
-    def address_from_public_key(public_key_hex: str) -> str:
-        public_key = bytes.fromhex(public_key_hex)
-        VerifyingKey.from_string(public_key, curve=SECP256k1)  # valida
-        digest = hashlib.sha256(public_key).hexdigest()
-        return f"brn1{digest[:40]}"
+    def generate_keypair():
+        priv = ec.generate_private_key(ec.SECP256K1())
+        sk_bytes = priv.private_bytes(
+            encoding=serialization.Encoding.Raw,
+            format=serialization.PrivateFormat.Raw,
+            encryption_algorithm=serialization.NoEncryption(),
+        )
+        pk_bytes = priv.public_key().public_bytes(
+            encoding=serialization.Encoding.X962,
+            format=serialization.PublicFormat.UncompressedPoint,
+        )
+        sk_hex = sk_bytes.hex()
+        pk_hex = pk_bytes.hex()
 
-    @staticmethod
-    def generate_keypair() -> dict:
-        sk = SigningKey.generate(curve=SECP256k1)
-        vk = sk.verifying_key
-        sk_hex = sk.to_string().hex()
-        vk_hex = vk.to_string().hex()
-        address = WalletManager.address_from_public_key(vk_hex)
-        return {
-            "address": address,
-            "spend_secret_key": sk_hex,
-            "public_key": vk_hex,
-        }
+        address = WalletManager.address_from_public_key(pk_hex)
 
-    # ---------------- Assinaturas digitais ----------------
-    @staticmethod
-    def sign_transaction(private_key_hex: str, message_dict: dict) -> str:
-        sk = SigningKey.from_string(bytes.fromhex(private_key_hex), curve=SECP256k1)
-        msg_bytes = json.dumps(message_dict, sort_keys=True, separators=(",", ":")).encode("utf-8")
-        signature = sk.sign_deterministic(msg_bytes, hashfunc=hashlib.sha256)
-        return signature.hex()
+        return sk_hex, pk_hex, address
 
     @staticmethod
-    def verify_signature(public_key_hex: str, message_dict: dict, signature_hex: str) -> bool:
+    def address_from_public_key(pk_hex: str) -> str:
+        digest = hashlib.sha256(bytes.fromhex(pk_hex)).hexdigest()
+        return "brn1" + digest[:40]
+
+    # ── Assinatura ───────────────────────────────────────
+    @staticmethod
+    def sign_transaction(sk_hex: str, payload: dict) -> str:
+        priv = ec.derive_private_key(
+            int(sk_hex, 16), ec.SECP256K1()
+        )
+        message = json.dumps(payload, sort_keys=True).encode()
+        sig = priv.sign(message, ec.ECDSA(hashes.SHA256()))
+        return sig.hex()
+
+    @staticmethod
+    def verify_signature(pk_hex: str, payload: dict, signature_hex: str) -> bool:
         try:
-            vk = VerifyingKey.from_string(bytes.fromhex(public_key_hex), curve=SECP256k1)
-            msg_bytes = json.dumps(message_dict, sort_keys=True, separators=(",", ":")).encode("utf-8")
-            return vk.verify(bytes.fromhex(signature_hex), msg_bytes, hashfunc=hashlib.sha256)
-        except (BadSignatureError, ValueError, Exception):
+            pub = ec.EllipticCurvePublicKey.from_encoded_point(
+                ec.SECP256K1(), bytes.fromhex(pk_hex)
+            )
+            message = json.dumps(payload, sort_keys=True).encode()
+            pub.verify(
+                bytes.fromhex(signature_hex),
+                message,
+                ec.ECDSA(hashes.SHA256()),
+            )
+            return True
+        except Exception:
             return False
 
-    # ---------------- Persistência ----------------
+    # ── Backup criptografado ─────────────────────────────
     @staticmethod
-    def _wallet_dir() -> Path:
-        d = Path.cwd() / "wallets"
-        d.mkdir(mode=0o700, exist_ok=True)
-        return d
-
-    @classmethod
-    def _wallet_path(cls, filename: str) -> Path:
-        safe_name = Path(filename).name
-        if not safe_name or safe_name in {".", ".."}:
-            raise ValueError("Nome de arquivo de carteira inválido.")
-        if not safe_name.endswith(".wallet"):
-            safe_name += ".wallet"
-        return cls._wallet_dir() / safe_name
-
-    # ---------------- Save / Load ----------------
-    @classmethod
-    def save_encrypted_wallet(cls, filename, password, address,
-                              spend_secret_key, public_key=""):
-        try:
-            if not isinstance(password, str) or len(password) < 12:
-                return {"status": "erro",
-                        "message": "Use uma senha com pelo menos 12 caracteres."}
-
-            filename = cls._wallet_path(filename)
-            wallet_data = {
-                "address": address,
-                "spend_secret_key": spend_secret_key,
-                "public_key": public_key,
-            }
-            raw_json = json.dumps(wallet_data).encode("utf-8")
-
-            salt = secrets.token_bytes(cls.ARGON2_SALT_LEN)
-            key = hash_secret_raw(
+    def _derive_key(password: str, salt: bytes) -> bytes:
+        if _HAS_ARGON2:
+            return hash_secret_raw(
                 secret=password.encode(),
                 salt=salt,
-                time_cost=cls.ARGON2_TIME_COST,
-                memory_cost=cls.ARGON2_MEMORY_COST,
-                parallelism=cls.ARGON2_PARALLELISM,
-                hash_len=cls.ARGON2_HASH_LEN,
+                time_cost=3,
+                memory_cost=65536,
+                parallelism=4,
+                hash_len=32,
                 type=Type.ID,
             )
+        # fallback PBKDF2 se argon2 indisponível
+        return hashlib.pbkdf2_hmac(
+            "sha256", password.encode(), salt, 200_000, dklen=32
+        )
 
-            nonce = secrets.token_bytes(cls.GCM_NONCE_LEN)
-            aesgcm = AESGCM(key)
-            ciphertext = aesgcm.encrypt(nonce, raw_json, None)
+    @staticmethod
+    def encrypt_wallet(payload: bytes, password: str) -> bytes:
+        salt = secrets.token_bytes(16)
+        nonce = secrets.token_bytes(12)
+        key = WalletManager._derive_key(password, salt)
+        blob = AESGCM(key).encrypt(nonce, payload, None)
+        return b"BRNW" + salt + nonce + blob
 
-            payload = {
-                "version": 2,
-                "method": "aes-256-gcm-argon2id",
-                "argon2": {
-                    "time_cost": cls.ARGON2_TIME_COST,
-                    "memory_cost": cls.ARGON2_MEMORY_COST,
-                    "parallelism": cls.ARGON2_PARALLELISM,
-                    "hash_len": cls.ARGON2_HASH_LEN,
-                },
-                "salt": base64.b64encode(salt).decode(),
-                "nonce": base64.b64encode(nonce).decode(),
-                "ciphertext": base64.b64encode(ciphertext).decode(),
-            }
+    @staticmethod
+    def decrypt_wallet(data: bytes, password: str) -> bytes:
+        if not data.startswith(b"BRNW"):
+            raise ValueError("Formato de carteira inválido.")
+        salt  = data[4:20]
+        nonce = data[20:32]
+        blob  = data[32:]
+        key = WalletManager._derive_key(password, salt)
+        return AESGCM(key).decrypt(nonce, blob, None)
 
-            with open(filename, "w", encoding="utf-8") as f:
-                json.dump(payload, f)
-            try:
-                os.chmod(filename, 0o600)
-            except OSError:
-                pass
+    # ── Identidade persistente do nó ─────────────────────
+    @staticmethod
+    def load_node_identity(path: str = "data/node_identity.json"):
+        if os.path.exists(path):
+            with open(path, encoding="utf-8") as f:
+                return json.load(f)
 
-            return {"status": "sucesso",
-                    "message": f"Carteira salva com seguranca em {filename}"}
-        except Exception as e:
-            return {"status": "erro", "message": str(e)}
-
-    @classmethod
-    def load_encrypted_wallet(cls, filename, password):
+        sk, pk, address = WalletManager.generate_keypair()
+        ident = {
+            "address":          address,
+            "public_key":       pk,
+            "spend_secret_key": sk,
+        }
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        with open(path, "w", encoding="utf-8") as f:
+            json.dump(ident, f, indent=2)
         try:
-            filename = cls._wallet_path(filename)
-            if not filename.exists():
-                return {"status": "erro", "message": "Arquivo nao encontrado."}
-
-            with open(filename, "r", encoding="utf-8") as f:
-                payload = json.load(f)
-
-            if payload.get("method") != "aes-256-gcm-argon2id":
-                return {"status": "erro",
-                        "message": "Formato antigo/inseguro. Reexporte a carteira."}
-
-            salt = base64.b64decode(payload["salt"])
-            nonce = base64.b64decode(payload["nonce"])
-            ciphertext = base64.b64decode(payload["ciphertext"])
-            p = payload["argon2"]
-
-            key = hash_secret_raw(
-                secret=password.encode(),
-                salt=salt,
-                time_cost=p["time_cost"],
-                memory_cost=p["memory_cost"],
-                parallelism=p["parallelism"],
-                hash_len=p["hash_len"],
-                type=Type.ID,
-            )
-
-            aesgcm = AESGCM(key)
-            try:
-                decrypted = json.loads(aesgcm.decrypt(nonce, ciphertext, None).decode())
-            except Exception:
-                return {"status": "erro", "message": "Senha incorreta."}
-
-            return {
-                "status": "sucesso",
-                "address": decrypted["address"],
-                "spend_secret_key": decrypted["spend_secret_key"],
-                "public_key": decrypted.get("public_key", ""),
-            }
-        except Exception as e:
-            return {"status": "erro", "message": f"Erro ao carregar carteira: {e}"}
+            os.chmod(path, 0o600)
+        except OSError:
+            pass
+        print(f"[wallet] identidade nova salva em {path}")
+        return ident

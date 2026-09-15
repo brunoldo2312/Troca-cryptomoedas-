@@ -1,3 +1,19 @@
+# 1. dependências
+pip install pywebview cryptography argon2-cffi bitcoinlib
+# opcional:
+pip install miniupnpc
+
+# 2. nó A (webview)
+python launcher.py 6001
+
+# 3. nó B (outro terminal / outro PC)
+python launcher.py 6002
+
+# 4. dashboard async (opcional)
+python explorer.py
+
+# 5. pipeline L2 (opcional)
+python main.py
 🧪 Como testar (dois nós, mesma máquina)
 
 Terminal A — nó 1

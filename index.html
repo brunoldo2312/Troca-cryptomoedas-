@@ -6,11 +6,13 @@
     <title>BRN RWA — Carteira Digital</title>
     <style>
         :root { color-scheme: dark; }
+        * { box-sizing: border-box; }
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI",
                          Roboto, sans-serif;
             background: #0d1117; color: #e6edf3;
             margin: 0; padding: 20px;
+            min-height: 100vh;
         }
         .container { max-width: 900px; margin: 0 auto; }
         h1 {
@@ -27,7 +29,10 @@
             margin: 0 0 14px; font-size: 15px;
             color: #58a6ff;
         }
-        .row { display: flex; gap: 12px; margin-bottom: 12px; flex-wrap: wrap; }
+        .row {
+            display: flex; gap: 12px;
+            margin-bottom: 12px; flex-wrap: wrap;
+        }
         .col { flex: 1; min-width: 220px; }
         label {
             display: block; font-size: 11px; color: #8b949e;
@@ -50,15 +55,30 @@
         }
         button:hover { background: #2ea043; }
         button:active { transform: translateY(1px); }
-        .btn-secondary { background: #21262d; border: 1px solid #30363d; }
+        button:disabled {
+            opacity: 0.5; cursor: not-allowed;
+            transform: none;
+        }
+        .btn-secondary {
+            background: #21262d; border: 1px solid #30363d;
+        }
         .btn-secondary:hover { background: #30363d; }
         .btn-warn { background: #b8860b; color: black; }
+        .btn-warn:hover { background: #d29922; }
+
         .balance-box {
             background: #1f6feb1a; border: 1px solid #1f6feb66;
             border-radius: 6px; padding: 14px;
             font-size: 15px; font-weight: 600;
             color: #58a6ff; line-height: 1.7;
             font-family: 'Consolas', monospace;
+        }
+        .p2p-box {
+            background: #2386361a; border: 1px solid #23863666;
+            border-radius: 6px; padding: 14px;
+            font-size: 13px; line-height: 1.7;
+            font-family: 'Consolas', monospace;
+            color: #7ee787;
         }
         .log-box {
             font-family: 'Consolas', monospace; font-size: 12px;
@@ -74,12 +94,16 @@
             font-weight: 700; vertical-align: middle;
             margin-left: 8px;
         }
-        .status.ok { background: #23863633; color: #3fb950; }
-        .status.err { background: #f8514933; color: #f85149; }
+        .status.ok   { background: #23863633; color: #3fb950; }
+        .status.err  { background: #f8514933; color: #f85149; }
         .status.warn { background: #d2992233; color: #d29922; }
         .hint {
             font-size: 11px; color: #8b949e;
             margin-top: 6px;
+        }
+        code {
+            background: #21262d; padding: 1px 6px;
+            border-radius: 3px; font-size: 11px;
         }
     </style>
 </head>
@@ -87,7 +111,27 @@
     <div class="container">
         <h1>🏦 BRN RWA — Carteira de Ativos</h1>
 
-        <!-- Chaves -->
+        <!-- ══════════════════════════════════════════════ -->
+        <!-- Rede P2P                                       -->
+        <!-- ══════════════════════════════════════════════ -->
+        <div class="section">
+            <h3>🌐 Rede P2P</h3>
+            <div class="p2p-box" id="p2p-status">
+                Consultando rede…
+            </div>
+            <div class="row" style="margin-top:12px">
+                <button class="btn-secondary" onclick="refreshP2P()">
+                    🔄 Atualizar Rede
+                </button>
+            </div>
+            <div class="hint">
+                Multicast LAN + conexões TCP persistentes.
+            </div>
+        </div>
+
+        <!-- ══════════════════════════════════════════════ -->
+        <!-- Chaves                                         -->
+        <!-- ══════════════════════════════════════════════ -->
         <div class="section">
             <h3>🔑 Chaves Ativas (ECDSA secp256k1)</h3>
             <div class="row">
@@ -122,7 +166,9 @@
             </div>
         </div>
 
-        <!-- Saldos -->
+        <!-- ══════════════════════════════════════════════ -->
+        <!-- Saldos                                         -->
+        <!-- ══════════════════════════════════════════════ -->
         <div class="section">
             <h3>📊 Saldo &amp; Portfólio</h3>
             <div class="row">
@@ -146,7 +192,9 @@
             </div>
         </div>
 
-        <!-- Backup -->
+        <!-- ══════════════════════════════════════════════ -->
+        <!-- Backup                                         -->
+        <!-- ══════════════════════════════════════════════ -->
         <div class="section">
             <h3>💾 Backup Criptografado (.wallet)</h3>
             <div class="row">
@@ -174,7 +222,9 @@
             </div>
         </div>
 
-        <!-- Envio -->
+        <!-- ══════════════════════════════════════════════ -->
+        <!-- Envio                                          -->
+        <!-- ══════════════════════════════════════════════ -->
         <div class="section">
             <h3>💸 Enviar BRN</h3>
             <div class="row">
@@ -199,7 +249,9 @@
             </button>
         </div>
 
-        <!-- Mineração -->
+        <!-- ══════════════════════════════════════════════ -->
+        <!-- Mineração                                      -->
+        <!-- ══════════════════════════════════════════════ -->
         <div class="section">
             <h3>⛏️ Mineração</h3>
             <div class="row">
@@ -217,7 +269,9 @@
             </div>
         </div>
 
-        <!-- Log -->
+        <!-- ══════════════════════════════════════════════ -->
+        <!-- Log                                            -->
+        <!-- ══════════════════════════════════════════════ -->
         <div class="section">
             <label>Console Operacional</label>
             <div id="console-log" class="log-box">
@@ -227,16 +281,16 @@
     </div>
 
     <script>
-        // ========================================
-        // Estado
-        // ========================================
+        // ════════════════════════════════════════════
+        // Estado global
+        // ════════════════════════════════════════════
         let API_READY = false;
         let wallet = { address: "", sk: "", pk: "" };
         let mining = false;
 
-        // ========================================
+        // ════════════════════════════════════════════
         // Utilidades
-        // ========================================
+        // ════════════════════════════════════════════
         function log(msg) {
             const box = document.getElementById('console-log');
             const ts = new Date().toLocaleTimeString();
@@ -251,16 +305,23 @@
             API_READY = ok;
         }
 
-        // ========================================
+        function api() {
+            if (!window.pywebview || !window.pywebview.api) {
+                throw new Error("pywebview ainda não está pronto.");
+            }
+            return window.pywebview.api;
+        }
+
+        // ════════════════════════════════════════════
         // Aguarda pywebview
-        // ========================================
+        // ════════════════════════════════════════════
         window.addEventListener('pywebviewready', () => {
             log('✅ pywebview pronto!');
             setApiStatus(true);
             log('Clique em "🎲 Criar Nova Carteira" para começar.');
+            refreshP2P();
         });
 
-        // fallback
         setTimeout(() => {
             if (window.pywebview && window.pywebview.api) {
                 setApiStatus(true);
@@ -270,19 +331,25 @@
             }
         }, 1500);
 
-        // ========================================
-        // API wrapper
-        // ========================================
-        function api() {
-            if (!window.pywebview || !window.pywebview.api) {
-                throw new Error("pywebview ainda não está pronto.");
+        // ════════════════════════════════════════════
+        // Rede P2P
+        // ════════════════════════════════════════════
+        async function refreshP2P() {
+            if (!API_READY) return;
+            try {
+                const s = await api().get_p2p_status();
+                document.getElementById('p2p-status').innerHTML =
+                    `🔹 Peers conectados: <b>${s.peer_count}</b><br>` +
+                    `🔹 Endpoint: <b>${s.endpoint}</b><br>` +
+                    `🔹 Multicast: <b>${s.multicast_active ? 'ativo' : 'off'}</b>`;
+            } catch (e) {
+                log('❌ P2P: ' + e.message);
             }
-            return window.pywebview.api;
         }
 
-        // ========================================
+        // ════════════════════════════════════════════
         // Carteira
-        // ========================================
+        // ════════════════════════════════════════════
         async function generateWallet() {
             log('Gerando chaves secp256k1…');
             try {
@@ -292,16 +359,11 @@
                 wallet.sk = kp.spend_secret_key;
                 wallet.pk = kp.public_key;
 
-                document.getElementById('wallet-address').value =
-                    kp.address;
-                document.getElementById('wallet-sk').value =
-                    kp.spend_secret_key;
-                document.getElementById('wallet-pk').value =
-                    kp.public_key;
+                document.getElementById('wallet-address').value = kp.address;
+                document.getElementById('wallet-sk').value = kp.spend_secret_key;
+                document.getElementById('wallet-pk').value = kp.public_key;
 
-                log('✅ Carteira criada: ' +
-                    kp.address.slice(0, 16) + '…');
-
+                log('✅ Carteira criada: ' + kp.address.slice(0, 16) + '…');
                 await checkBalances();
             } catch (e) {
                 log('❌ Erro ao gerar carteira: ' + e.message);
@@ -358,12 +420,11 @@
             }
         }
 
-        // ========================================
+        // ════════════════════════════════════════════
         // Backup
-        // ========================================
+        // ════════════════════════════════════════════
         async function exportWallet() {
-            const file = document.getElementById('file-name')
-                                 .value.trim();
+            const file = document.getElementById('file-name').value.trim();
             const pass = document.getElementById('file-pass').value;
 
             if (!wallet.address) {
@@ -388,8 +449,7 @@
         }
 
         async function importWallet() {
-            const file = document.getElementById('file-name')
-                                 .value.trim();
+            const file = document.getElementById('file-name').value.trim();
             const pass = document.getElementById('file-pass').value;
 
             if (!pass) {
@@ -406,12 +466,9 @@
                     wallet.sk = r.spend_secret_key;
                     wallet.pk = r.public_key || '';
 
-                    document.getElementById('wallet-address').value =
-                        r.address;
-                    document.getElementById('wallet-sk').value =
-                        r.spend_secret_key;
-                    document.getElementById('wallet-pk').value =
-                        r.public_key || '';
+                    document.getElementById('wallet-address').value = r.address;
+                    document.getElementById('wallet-sk').value = r.spend_secret_key;
+                    document.getElementById('wallet-pk').value = r.public_key || '';
 
                     log('✅ Carteira restaurada!');
                     await checkBalances();
@@ -423,12 +480,11 @@
             }
         }
 
-        // ========================================
+        // ════════════════════════════════════════════
         // Envio
-        // ========================================
+        // ════════════════════════════════════════════
         async function sendTransaction() {
-            const to = document.getElementById('tx-to')
-                               .value.trim();
+            const to = document.getElementById('tx-to').value.trim();
             const amount = parseFloat(
                 document.getElementById('tx-amount').value
             );
@@ -441,6 +497,10 @@
                 log('⚠️ Preencha destinatário e valor.');
                 return;
             }
+            if (!/^brn1[0-9a-fA-F]{40}$/.test(to)) {
+                log('❌ Endereço inválido (esperado brn1 + 40 hex).');
+                return;
+            }
 
             log(`Enviando ${amount} BRN para ${to.slice(0, 16)}…`);
 
@@ -449,17 +509,16 @@
                     wallet.address, to, amount,
                     wallet.sk, wallet.pk
                 );
-                log((r.status === 'sucesso' ? '✅ ' : '❌ ') +
-                    r.message);
+                log((r.status === 'sucesso' ? '✅ ' : '❌ ') + r.message);
                 await checkBalances();
             } catch (e) {
                 log('❌ Erro no envio: ' + e.message);
             }
         }
 
-        // ========================================
+        // ════════════════════════════════════════════
         // Mineração
-        // ========================================
+        // ════════════════════════════════════════════
         async function toggleMining() {
             if (!wallet.address) {
                 log('⚠️ Gere uma carteira primeiro.');
@@ -482,12 +541,41 @@
                 st.className = 'status ' + (mining ? 'ok' : 'err');
                 st.textContent = mining ? 'Minerando…' : 'Parada';
 
-                log((r.status === 'sucesso' ? '✅ ' : '❌ ') +
-                    r.message);
+                log((r.status === 'sucesso' ? '✅ ' : '❌ ') + r.message);
             } catch (e) {
                 log('❌ Erro na mineração: ' + e.message);
             }
         }
+
+        // ════════════════════════════════════════════
+        // Polling automático
+        // ════════════════════════════════════════════
+
+        // P2P a cada 4s
+        setInterval(refreshP2P, 4000);
+
+        // Estado da mineração + saldo a cada 5s
+        setInterval(async () => {
+            if (!API_READY) return;
+
+            try {
+                const s = await api().get_full_chain();
+
+                const st = document.getElementById('mining-status');
+                const btn = document.getElementById('btn-mining');
+
+                st.className = 'status ' + (s.is_mining ? 'ok' : 'err');
+                st.textContent = s.is_mining ? 'Minerando…' : 'Parada';
+
+                btn.textContent = s.is_mining
+                    ? '🛑 Parar Mineração'
+                    : '▶ Iniciar Mineração';
+
+                if (wallet.address) await checkBalances();
+            } catch (_) {
+                /* ignora silenciosamente */
+            }
+        }, 5000);
     </script>
 </body>
 </html>
